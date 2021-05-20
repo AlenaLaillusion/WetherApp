@@ -43,11 +43,12 @@ class _WeatherForcecastPageState extends State<WeatherForcecastPage> {
         appBar: AppBar(
           title: Text('Weather forecast'),
         ),
-        body: ListView( //Здесь мы передаем список с элементами в конструктор
-            children: weatherForcast.map((Weather weather) {
-        return WeatherListItem(weather);
-        } ).toList()
-      )),
+        body: ListView.builder(
+          itemCount: weatherForcast.length,
+            itemBuilder: (BuildContext context, int index) {
+            return WeatherListItem(weatherForcast[index]);
+            }
+        )),
     );
   }}
 
