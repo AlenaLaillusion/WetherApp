@@ -4,7 +4,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-class Weather {
+import 'heading.dart';
+
+class Weather extends ListItem {
   static const String weatherUrl = "http://openweathermap.org/img/w/";
 
   DateTime dateTime;
@@ -44,3 +46,4 @@ class WeatherListItem extends StatelessWidget {
     );
   }
 }
+
