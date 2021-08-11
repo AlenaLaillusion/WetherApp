@@ -2,6 +2,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:weather_app/location_info.dart';
 import 'constant.dart';
 import 'weather.dart';
 import 'model/forecast_response.dart';
@@ -16,32 +18,104 @@ void main() {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-     return WeatherForcecastPage("Moskow");
+     return LocationInheritedWidget(
+       child: WeatherForcecastPage(), );
   }
 }
 
-
 class WeatherForcecastPage extends StatefulWidget {
-  WeatherForcecastPage(this.cityName);
-
-  final String cityName;
+  WeatherForcecastPage(Placemark place);
 
   @override
   State<StatefulWidget> createState() {
-
-  return _WeatherForcecastPageState(35.0164, 139.0077);
+    return _WeatherForcecastPageState();
   }
 }
 
 class _WeatherForcecastPageState extends State<WeatherForcecastPage> {
 
-  final _skaffoldKey = GlobalKey<ScaffoldState>();
+  Placemark _placemark;
+  bool _isLoading = false;
 
-  final double latitude;
-  final double longitude;
+  Completer<void> _refreshCompleter;
 
-  List<ListItem> weatherForcast;
-  _WeatherForcecastPageState(this.latitude, this.longitude);
+  @override
+  void initState() {
+    super.initState();
+    _refreshCompleter = Completer<void>();
+    _loadData();
+  }
+
+  Future<void> _onRefresh() async {
+    var weatherFuture =
+    getWeather(_placemark.position.latitude, _placemark.position.longitude);
+    weatherFuture.then((_weatherForecast) {
+      initWeatherWithData(_weatherForecast, _placemark);
+    });
+    return _refreshCompleter.future;
+  }
+
+  // метод вызывается, когда состояние объектов, от которых зависит этот виджет, меняется
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    //получем инстанс InheritedWidget-a
+    var locationInfo = LocationInfo.of(context);
+    //читаем оттуда местоположение
+    _placemark = locationInfo?.placemark;
+    // загружаем прогноз погоды
+    _loadData();
+  }
+
+  void _loadData() {
+    // если местоположения нет, то показываем progressBar
+    _isLoading = true;
+    if (_placemark == null) {
+      return;
+    }
+    var weatherFuture = getWeather(_placemark?.position?.latitude,
+        _placemark?.position?.longitude); // делаем запрос на получение погоды
+    weatherFuture.then((weatherData) {
+      // берем value response из future погоды
+      initWeatherWithData(weatherData, _placemark);
+      _isLoading = false;
+    });
+  }
+
+  Widget get _pageToDisplay {
+    if (_isLoading) {
+      return _loadingView;
+    } else {
+      return _contentView;
+    }
+  }
+
+  Widget get _loadingView {
+    return Center(
+      child: CircularProgressIndicator(), // виджет прогресса
+    );
+  }
+
+  List<ListItem> _weatherForecast;
+  _WeatherForcecastPageState();
+
+  Widget get _contentView {
+    return RefreshIndicator(
+        onRefresh: _onRefresh,
+        child: ListView.builder(
+            itemCount: _weatherForecast == null ? 0 : _weatherForecast.length,
+            itemBuilder: (BuildContext context, int index) {
+              final item = _weatherForecast[index];
+              if (item is WeatherListBean) {
+                return WeatherListItem(item);
+              } else if (item is DayHeading) {
+                return HeadingListItem(item);
+              } else
+                throw Exception("wrong type");
+            }));
+  }
+
 
   Future<List<ListItem>> getWeather(double lat, double lng) async {
     var queryParameters = { //подготавливаем параметры запроса
@@ -73,85 +147,56 @@ class _WeatherForcecastPageState extends State<WeatherForcecastPage> {
     return List<ListItem>();
   }
 
-  @override
-  void initState() {
+
+  void initWeatherWithData(List<ListItem> weatherData, Placemark placemark) {
     var itCurrentDay = DateTime.now();
-   var dataFuture = getWeather(latitude, longitude);
-   dataFuture.then((value) {
      var weatherForecastLocal = List<ListItem>();
      weatherForecastLocal.add(DayHeading(itCurrentDay)); // first heading
-     List<ListItem> weatherData = value;
      var itNextDay = DateTime.now().add(Duration(days: 1));
      itNextDay = DateTime(
          itNextDay.year, itNextDay.month, itNextDay.day, 0, 0, 0, 0, 1);
      var iterator = weatherData.iterator;
      while (iterator.moveNext()) {
-       var weatherDateTime = iterator.current as WeatherListBean;
-       if (weatherDateTime.getDateTime().isAfter(itNextDay)) {
+       var weatherItem = iterator.current as WeatherListBean;
+       if (weatherItem.getDateTime().isAfter(itNextDay)) {
          itCurrentDay = itNextDay;
          itNextDay = itCurrentDay.add(Duration(days: 1));
          itNextDay = DateTime(
              itNextDay.year, itNextDay.month, itNextDay.day, 0, 0, 0, 0, 1);
          weatherForecastLocal.add(DayHeading(itCurrentDay)); // next heading
        } else {
-         weatherForecastLocal.add(iterator.current);
+         weatherForecastLocal.add(weatherItem);
        }
      }
        setState(() {
-       weatherForcast = weatherForecastLocal;
-   });
+       _weatherForecast = weatherForecastLocal;
    });
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ListView Simple',
+      title: 'Weather report',
       theme: ThemeData(
         primarySwatch: Colors.amber,
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Weather forecast'),
+          title: Text(getPlaceTitle()),
         ),
-        body: ListView.builder(
-          itemCount: weatherForcast == null ? 0 : weatherForcast.length,
-            itemBuilder: (BuildContext context, int index) {
-            final item = weatherForcast[index];
-            if (item is WeatherListBean) {
-              return WeatherListItem(item);
-            } else if(item is DayHeading) {
-              return HeadingListItem(item);
-            } else
-            throw Exception('wrong type');
-            }
-        )));
-  }}
-
-/*
-Future<Placemark> getLocation() async {
-  Geolocator geolocator = Geolocator()..forceAndroidLocationManager = true;
-  Position position = await geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.low); //получение геопозиции
-  List<Placemark> placemark = await Geolocator().placemarkFromCoordinates(position.latitude, position.longitude); //определение названия места
-  if(placemark.isNotEmpty) {
-    return placemark[0]; //возвращаем первый элемент из списка полученных вариантов
+        body:
+            _pageToDisplay));
   }
-  return null;
+  String getPlaceTitle() {
+    var placeTitle = _placemark?.subAdministrativeArea;
+    if (placeTitle?.isEmpty == true) {
+      placeTitle = _placemark?.administrativeArea;
+    }
+    return placeTitle ?? "";
+  }
 }
 
-void _loadData() {
-  _isLoading = true;
-  var locationFuture = getLocation(); //получение future на геопозицию
-  locationFuture.then((placemark) { //берем значение из результата
-    var weatherFuture = getWeather(placemark.position.latitude, placemark.position.longitude); // делаем запрос на получение погоды
-    weatherFuture.then((weatherData) {
-      initWeatherWithData(weatherData, placemark);
-      _isLoading = false;
-    });
-  });
-}
 
-*/
 
 
 
