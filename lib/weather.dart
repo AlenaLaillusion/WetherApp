@@ -2,7 +2,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:weather_app/model/forecast_response.dart';
 
 
@@ -15,20 +14,17 @@ class WeatherListItem extends StatelessWidget implements ListItemWidget {
 
   WeatherListItem(this.weather);
 
-
   @override
   Widget build(BuildContext context) {
     return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Padding(padding: const EdgeInsets.only(right: 16.0),
-              child:
-                Text(_dateFormat.format(weather.getDateTime()),
-                style: Theme.of(context).textTheme.subhead,)),
-          Image.network(weather.getIconUrl()),
-          Text((weather.main.temp.toInt()).toString() + " \u00B0C",
-          style: Theme.of(context).textTheme.subhead),
+        padding: const EdgeInsets.all(16.0),
+        child: Row(children: [
+          Expanded(flex: 3, child: Text(_dateFormat.format(weather.getDateTime()))),
+          Expanded(
+            flex: 1,
+            child: Text((weather.main.temp - 273).toString() + " C"),
+          ),
+          Expanded(flex: 1, child: Image.network(weather.getIconUrl()))
         ]));
   }
 }

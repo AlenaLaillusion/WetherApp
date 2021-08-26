@@ -52,7 +52,8 @@ class _LocationInheritedState extends State<LocationInheritedWidget> {
     var locationFuture = getLocation(); // получаем future на геопозицию
     locationFuture.then((newPosition) {
       // берем value из результат future
-      var placeFuture = getPlacemark(newPosition);
+      var placeFuture =
+      LocationHelper.getPlacemark(newPosition.latitude, newPosition.longitude);
       placeFuture.then((newPlaceMark) {
         onPositionChange(newPlaceMark);
       });
@@ -85,11 +86,21 @@ class _LocationInheritedState extends State<LocationInheritedWidget> {
         desiredAccuracy: LocationAccuracy.low); // получаем геопозицию
     return position;
   }
+}
 
-  Future<Placemark> getPlacemark(Position position) async {
+///
+///Helper class provides location related functions
+///
+class LocationHelper {
+  static LocationHelper _instance;
+  factory LocationHelper() => _instance ??= new LocationHelper._();
+
+  LocationHelper._();
+
+  static Future<Placemark> getPlacemark(
+      double latitude, double longitude) async {
     List<Placemark> placemark = await Geolocator().placemarkFromCoordinates(
-        position.latitude,
-        position.longitude); // определяем название места по геопозиции
+        latitude, longitude); // определяем название места по геопозиции
     if (placemark.isNotEmpty) {
       return placemark[
       0]; // возвращаем первый элемент из списка полученных вариантов

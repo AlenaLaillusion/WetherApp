@@ -1,9 +1,10 @@
 
-import 'dart:html';
-
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:weather_app/main.dart';
+import 'package:weather_app/model/weather_forest_page.dart';
+import 'map_page.dart';
+
 
 class PlacePage extends StatefulWidget {
   const PlacePage({Key key}) : super(key: key);
@@ -109,7 +110,7 @@ class _PlacePageState extends State<PlacePage> {
     Navigator.push(
         context,
         MaterialPageRoute(builder: (context) =>
-        WeatherForcecastPage(place)),
+        WeatherForecastPage(place)),
     );
   }
 
